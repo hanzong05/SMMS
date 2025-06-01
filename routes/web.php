@@ -3,9 +3,11 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WasteController;
 use App\Http\Controllers\WasteConfigController;
+use App\Http\Controllers\UserController; // Add this import
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; // Add this for the waste-reports route
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -40,6 +42,13 @@ Route::get('/Reports', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('Reports');
 
+// Add User Management Page Route
+Route::get('/UserManagement', function () {
+    return Inertia::render('Admin/UserManagement', [
+        'user' => Auth::user()
+    ]);
+})->middleware(['auth', 'verified'])->name('UserManagement');
+
 // Check submission route - Fixed the field name
 Route::get('/check-submission', function (Request $request) {
     $submitted = \App\Models\Waste::where('InputBy', $request->user_name) // Fixed: InputBy instead of inputBy
@@ -49,7 +58,7 @@ Route::get('/check-submission', function (Request $request) {
     return response()->json(['submitted' => $submitted]);
 })->middleware(['auth']);
 
-// API Routes for waste configuration
+// API Routes for waste configuration and user management
 Route::prefix('api')->middleware(['auth'])->group(function () {
     // Waste Types Routes
     Route::get('/waste-types', [WasteConfigController::class, 'getWasteTypes']);
@@ -62,6 +71,13 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     Route::post('/dispositions', [WasteConfigController::class, 'storeDisposition']);
     Route::put('/dispositions/{id}', [WasteConfigController::class, 'updateDisposition']);
     Route::delete('/dispositions/{id}', [WasteConfigController::class, 'deleteDisposition']);
+
+    // User Management API Routes - ADD THESE
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    Route::post('/users/{id}/update-login', [UserController::class, 'updateLastLogin']);
 });
 
 Route::get('/api/waste-reports', function () {
@@ -94,6 +110,7 @@ Route::get('/api/waste-reports', function () {
         ], 500);
     }
 })->middleware(['auth', 'verified']);
+
 // Waste management routes
 Route::middleware(['auth'])->group(function () {
     // Main waste CRUD routes
