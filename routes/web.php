@@ -34,6 +34,12 @@ Route::get('/WasteConfig', function(){
     ]);
 })->middleware(['auth','verified'])->name('WasteConfigManager');
 
+Route::get('/Reports', function () {
+    return Inertia::render('Public/Reports', [
+        'user' => Auth::user()
+    ]);
+})->middleware(['auth', 'verified'])->name('Reports');
+
 // Check submission route - Fixed the field name
 Route::get('/check-submission', function (Request $request) {
     $submitted = \App\Models\Waste::where('InputBy', $request->user_name) // Fixed: InputBy instead of inputBy
@@ -58,6 +64,36 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     Route::delete('/dispositions/{id}', [WasteConfigController::class, 'deleteDisposition']);
 });
 
+Route::get('/api/waste-reports', function () {
+    try {
+        $reports = DB::table('wastes')
+            ->select([
+                'id',
+                'TypeOfWaste',
+                'Disposition', // Check your actual column name
+                'Weight',
+                'Unit',
+                'InputBy',
+                'VerifiedBy',
+                'created_at',
+                'updated_at'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $reports
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve waste reports: ' . $e->getMessage(),
+            'data' => []
+        ], 500);
+    }
+})->middleware(['auth', 'verified']);
 // Waste management routes
 Route::middleware(['auth'])->group(function () {
     // Main waste CRUD routes
