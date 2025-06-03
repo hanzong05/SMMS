@@ -98,4 +98,32 @@ class User extends Authenticatable
     {
         return $query->where('role', $role);
     }
+
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class);
+    }
+
+    public function hasPermission($permission)
+    {
+        return $this->permissions()->where('name', $permission)->exists();
+    }
+
+    public function givePermission($permission)
+    {
+        if (is_string($permission)) {
+            $permission = Permission::whereName($permission)->firstOrFail();
+        }
+        if (!$this->hasPermission($permission->name)) {
+            $this->permissions()->attach($permission);
+        }
+    }
+
+    public function revokePermission($permission)
+    {
+        if (is_string($permission)) {
+            $permission = Permission::whereName($permission)->firstOrFail();
+        }
+        $this->permissions()->detach($permission);
+    }
 }

@@ -17,62 +17,73 @@ export default function UserManagement() {
     role: 'user',
     department: '',
     password: '',
-    password_confirmation: ''
+    password_confirmation: '',
+    permissions: [] // Permissions array in user form state
   });
 
   const roles = ['admin', 'supervisor', 'user'];
   const departments = ['Operations', 'Production', 'Quality Control', 'Environmental'];
+  const permissions = [
+    { id: 'view_users', label: 'View Users' },
+    { id: 'create_users', label: 'Create Users' },
+    { id: 'edit_users', label: 'Edit Users' },
+    { id: 'delete_users', label: 'Delete Users' },
+    { id: 'manage_waste', label: 'Manage Waste' },
+    { id: 'view_reports', label: 'View Reports' },
+    { id: 'manage_dispositions', label: 'Manage Dispositions' }
+  ];
 
-  // Fetch users from API
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users', {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data || data);
-      } else {
-        setError('Failed to fetch users');
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      // Fallback mock data for development
-      setUsers([
-        { id: 1, name: 'John Admin', email: 'admin@example.com', role: 'admin', status: 'active', last_login_at: '2025-06-01T10:30:00Z', department: 'Operations' },
-        { id: 2, name: 'Jane Supervisor', email: 'supervisor@example.com', role: 'supervisor', status: 'active', last_login_at: '2025-05-31T14:20:00Z', department: 'Production' },
-        { id: 3, name: 'Bob User', email: 'user@example.com', role: 'user', status: 'active', last_login_at: '2025-05-30T09:15:00Z', department: 'Quality Control' }
-      ]);
-    } finally {
-      setLoading(false);
-    }
+  // Add permission handling functions
+  const handlePermissionChange = (permissionId) => {
+    setUserForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permissionId)
+        ? prev.permissions.filter(id => id !== permissionId)
+        : [...prev.permissions, permissionId]
+    }));
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // Add permission section to the modal form
+  const renderPermissionsSection = () => (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+      <div className="space-y-2">
+        {permissions.map(permission => (
+          <div key={permission.id} className="flex items-center">
+            <input
+              type="checkbox"
+              id={permission.id}
+              checked={userForm.permissions.includes(permission.id)}
+              onChange={() => handlePermissionChange(permission.id)}
+              className="h-4 w-4 text-blue-600 rounded border-gray-300"
+            />
+            <label htmlFor={permission.id} className="ml-2 text-sm text-gray-700">
+              {permission.label}
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-    return matchesSearch && matchesRole;
-  });
-
+  // Modify the handleUserSubmit function to include permissions
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     
     if (!userForm.name || !userForm.email || !userForm.role) {
-      setError('Please fill in all required fields');
+      const error = 'Please fill in all required fields';
+      console.error('Validation error:', error, { formData: userForm });
+      setError(error);
       return;
     }
 
     if (!editingUser && userForm.password !== userForm.password_confirmation) {
-      setError('Passwords do not match');
+      const error = 'Passwords do not match';
+      console.error('Validation error:', error, { 
+        password: userForm.password?.length,
+        confirmation: userForm.password_confirmation?.length
+      });
+      setError(error);
       return;
     }
 
@@ -80,26 +91,55 @@ export default function UserManagement() {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
       const method = editingUser ? 'PUT' : 'POST';
       
+      console.log('Attempting to save user:', {
+        url,
+        method,
+        formData: { ...userForm, password: '[REDACTED]' },
+        editingUserId: editingUser?.id
+      });
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         },
-        body: JSON.stringify(userForm),
+        body: JSON.stringify({
+          ...userForm,
+          permissions: userForm.permissions
+        }),
       });
       
       if (response.ok) {
+        console.log('User saved successfully');
         await fetchUsers();
         setShowModal(false);
         setEditingUser(null);
-        setUserForm({ name: '', email: '', role: 'user', department: '', password: '', password_confirmation: '' });
+        setUserForm({
+          name: '',
+          email: '',
+          role: 'user',
+          department: '',
+          password: '',
+          password_confirmation: '',
+          permissions: []
+        });
         setError(null);
       } else {
         const data = await response.json();
+        console.error('Server error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
         setError(data.message || 'Failed to save user');
       }
     } catch (err) {
+      console.error('Error saving user:', {
+        error: err.message,
+        stack: err.stack,
+        formData: { ...userForm, password: '[REDACTED]' }
+      });
       setError('Failed to save user');
     }
   };
@@ -134,7 +174,8 @@ export default function UserManagement() {
         role: user.role,
         department: user.department || '',
         password: '',
-        password_confirmation: ''
+        password_confirmation: '',
+        permissions: user.permissions || [] // Add this line
       });
     } else {
       setEditingUser(null);
@@ -160,6 +201,43 @@ export default function UserManagement() {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString();
   };
+  
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users', {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.data || data);
+      } else {
+        setError('Failed to fetch users');
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Add this filtering logic after the useEffect hook and before the return statement
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    return matchesSearch && matchesRole;
+  });
 
   if (loading) {
     return (
@@ -462,13 +540,16 @@ export default function UserManagement() {
                   </>
                 )}
                 
+                {/* Add the permissions section here, before the buttons */}
+                {renderPermissionsSection()}
+                
                 <div className="flex justify-end gap-2 mt-6">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModal(false);
                       setEditingUser(null);
-                      setUserForm({ name: '', email: '', role: 'user', department: '', password: '', password_confirmation: '' });
+                      setUserForm({ name: '', email: '', role: 'user', department: '', password: '', password_confirmation: '', permissions: [] });
                     }}
                     className="px-4 py-2 text-gray-600 hover:text-gray-800"
                   >
