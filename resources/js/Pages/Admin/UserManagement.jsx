@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, Edit2, Trash2, Plus, Search, UserCheck, UserX, Key, Mail } from 'lucide-react';
 import Sidebar from '@/Components/SideBar';
+import { Head } from '@inertiajs/react';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -162,7 +163,8 @@ export default function UserManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Head title="User Management" />
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -175,34 +177,76 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <Head title="User Management" />
       <Sidebar />
-      <div className="flex-1">
-        {/* Header */}
-        <div className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+      <div className="flex-1 overflow-auto">
+        {/* Header Section */}
+        <div className="p-8 pb-0">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
+            <p className="text-gray-600">Manage users, roles and permissions</p>
+          </div>
+
+          {/* Quick Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 p-6 border border-blue-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                   <Users className="w-6 h-6 text-white" />
                 </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-2xl shadow-lg shadow-green-100 p-6 border border-green-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">User Management</h1>
-                  <p className="text-sm text-gray-500">Manage users, roles and permissions</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Active Users</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {users.filter(u => u.status === 'active').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <UserCheck className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <button
-                onClick={() => openUserModal()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add User
-              </button>
+            </div>
+            
+            <div className="bg-white rounded-2xl shadow-lg shadow-red-100 p-6 border border-red-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Admins</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {users.filter(u => u.role === 'admin').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-red-600 rounded-xl flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-2xl shadow-lg shadow-purple-100 p-6 border border-purple-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Supervisors</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {users.filter(u => u.role === 'supervisor').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <UserX className="w-6 h-6 text-white" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="px-8 pb-8">
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
@@ -210,57 +254,22 @@ export default function UserManagement() {
             </div>
           )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-                </div>
-                <Users className="w-8 h-8 text-blue-500" />
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active Users</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {users.filter(u => u.status === 'active').length}
-                  </p>
-                </div>
-                <UserCheck className="w-8 h-8 text-green-500" />
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Admins</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {users.filter(u => u.role === 'admin').length}
-                  </p>
-                </div>
-                <Shield className="w-8 h-8 text-red-500" />
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Supervisors</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {users.filter(u => u.role === 'supervisor').length}
-                  </p>
-                </div>
-                <UserX className="w-8 h-8 text-blue-500" />
-              </div>
-            </div>
-          </div>
-
           {/* Filters */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border mb-6">
+          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 p-8 mb-8">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Manage Users</h2>
+                <p className="text-gray-600">Search, filter and manage system users</p>
+              </div>
+              <button
+                onClick={() => openUserModal()}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Add User
+              </button>
+            </div>
+
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="relative">
@@ -291,9 +300,9 @@ export default function UserManagement() {
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
+          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 overflow-hidden">
+            <div className="p-8 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">
                 Users ({filteredUsers.length})
               </h3>
             </div>

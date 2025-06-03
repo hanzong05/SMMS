@@ -1,24 +1,54 @@
 import Sidebar from "@/Components/SideBar";
 import ApexCharts from 'apexcharts'
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, useRef} from "react";
 
 export default function Dashboard() {
   const [wasteData, setWasteData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [chartData, setChartData] = useState({
     lineChart: null,
     pieChart: null,
     donutChart: null
   });
+  
+  // Chart refs to store chart instances
+  const chartRefs = useRef({
+    lineChart: null,
+    pieChart: null,
+    donutChart: null
+  });
+
+  // Convert weights to a standard unit (kg)
+  const convertToKg = (weight, unit) => {
+    const weightNum = parseFloat(weight) || 0;
+    switch (unit?.toLowerCase()) {
+      case 'lbs':
+      case 'lb':
+        return weightNum * 0.453592; // lbs to kg
+      case 'tons':
+      case 'ton':
+        return weightNum * 1000; // tons to kg
+      case 'g':
+      case 'grams':
+        return weightNum / 1000; // grams to kg
+      case 'kg':
+      case 'kilograms':
+      default:
+        return weightNum;
+    }
+  };
 
   // Fetch waste reports from API
   const fetchWasteReports = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const response = await fetch('/api/waste-reports', {
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
       });
       
@@ -27,161 +57,19 @@ export default function Dashboard() {
         if (data.success && data.data) {
           setWasteData(data.data);
           processDataForCharts(data.data);
+        } else {
+          throw new Error('Invalid data format received');
         }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Failed to fetch waste data:', error);
-      // Use mock data with better distribution across days
-      const mockData = [
-        // Today's data
-        {
-          id: 1,
-          TypeOfWaste: 'Plastic Waste',
-          Disposition: 'Recycle',
-          Weight: '5.5',
-          Unit: 'kg',
-          InputBy: 'John Doe',
-          VerifiedBy: 'Admin User',
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 2,
-          TypeOfWaste: 'Paper Waste',
-          Disposition: 'Recycle',
-          Weight: '3.2',
-          Unit: 'kg',
-          InputBy: 'Jane Smith',
-          VerifiedBy: null,
-          created_at: new Date().toISOString()
-        },
-        // Yesterday
-        {
-          id: 3,
-          TypeOfWaste: 'Food Waste',
-          Disposition: 'Compost',
-          Weight: '2.8',
-          Unit: 'kg',
-          InputBy: 'Bob Johnson',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: 4,
-          TypeOfWaste: 'Glass Waste',
-          Disposition: 'Recycle',
-          Weight: '4.1',
-          Unit: 'kg',
-          InputBy: 'Alice Brown',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: 5,
-          TypeOfWaste: 'Metal Waste',
-          Disposition: 'Recycle',
-          Weight: '1.9',
-          Unit: 'kg',
-          InputBy: 'Charlie Wilson',
-          VerifiedBy: null,
-          created_at: new Date(Date.now() - 86400000).toISOString()
-        },
-        // 2 days ago
-        {
-          id: 6,
-          TypeOfWaste: 'Plastic Waste',
-          Disposition: 'Recycle',
-          Weight: '6.2',
-          Unit: 'kg',
-          InputBy: 'David Lee',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 172800000).toISOString()
-        },
-        {
-          id: 7,
-          TypeOfWaste: 'Food Waste',
-          Disposition: 'Compost',
-          Weight: '3.7',
-          Unit: 'kg',
-          InputBy: 'Eva Garcia',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 172800000).toISOString()
-        },
-        // 3 days ago
-        {
-          id: 8,
-          TypeOfWaste: 'Paper Waste',
-          Disposition: 'Recycle',
-          Weight: '2.5',
-          Unit: 'kg',
-          InputBy: 'Frank Miller',
-          VerifiedBy: null,
-          created_at: new Date(Date.now() - 259200000).toISOString()
-        },
-        {
-          id: 9,
-          TypeOfWaste: 'Electronic Waste',
-          Disposition: 'Special Processing',
-          Weight: '1.3',
-          Unit: 'kg',
-          InputBy: 'Grace Taylor',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 259200000).toISOString()
-        },
-        // 4 days ago
-        {
-          id: 10,
-          TypeOfWaste: 'Plastic Waste',
-          Disposition: 'Recycle',
-          Weight: '4.8',
-          Unit: 'kg',
-          InputBy: 'Henry Davis',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 345600000).toISOString()
-        },
-        {
-          id: 11,
-          TypeOfWaste: 'Glass Waste',
-          Disposition: 'Recycle',
-          Weight: '3.1',
-          Unit: 'kg',
-          InputBy: 'Iris Johnson',
-          VerifiedBy: null,
-          created_at: new Date(Date.now() - 345600000).toISOString()
-        },
-        {
-          id: 12,
-          TypeOfWaste: 'Food Waste',
-          Disposition: 'Compost',
-          Weight: '2.2',
-          Unit: 'kg',
-          InputBy: 'Jack Brown',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 345600000).toISOString()
-        },
-        // 5 days ago
-        {
-          id: 13,
-          TypeOfWaste: 'Paper Waste',
-          Disposition: 'Recycle',
-          Weight: '5.9',
-          Unit: 'kg',
-          InputBy: 'Kate Wilson',
-          VerifiedBy: 'Admin User',
-          created_at: new Date(Date.now() - 432000000).toISOString()
-        },
-        {
-          id: 14,
-          TypeOfWaste: 'Metal Waste',
-          Disposition: 'Recycle',
-          Weight: '2.7',
-          Unit: 'kg',
-          InputBy: 'Leo Martinez',
-          VerifiedBy: null,
-          created_at: new Date(Date.now() - 432000000).toISOString()
-        }
-      ];
-      setWasteData(mockData);
-      processDataForCharts(mockData);
+      setError(error.message);
+      
+      // Set empty data instead of mock data
+      setWasteData([]);
+      processDataForCharts([]);
     } finally {
       setLoading(false);
     }
@@ -199,15 +87,20 @@ export default function Dashboard() {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       
-      const dayData = data.filter(item => 
-        item.created_at && item.created_at.split('T')[0] === dateStr
-      );
+      const dayData = data.filter(item => {
+        if (!item.created_at) return false;
+        const itemDate = new Date(item.created_at).toISOString().split('T')[0];
+        return itemDate === dateStr;
+      });
       
-      const totalWeight = dayData.reduce((sum, item) => sum + (parseFloat(item.Weight) || 0), 0);
+      const totalWeight = dayData.reduce((sum, item) => {
+        const weightInKg = convertToKg(item.Weight, item.Unit);
+        return sum + weightInKg;
+      }, 0);
       const totalCount = dayData.length;
       
       last7Days.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-      dailyWeights.push(totalWeight);
+      dailyWeights.push(Math.round(totalWeight * 100) / 100); // Round to 2 decimal places
       dailyCounts.push(totalCount);
     }
 
@@ -215,67 +108,151 @@ export default function Dashboard() {
     const wasteTypeStats = {};
     data.forEach(item => {
       const type = item.TypeOfWaste || 'Unknown';
-      wasteTypeStats[type] = (wasteTypeStats[type] || 0) + (parseFloat(item.Weight) || 0);
+      const weightInKg = convertToKg(item.Weight, item.Unit);
+      wasteTypeStats[type] = (wasteTypeStats[type] || 0) + weightInKg;
     });
 
     const pieLabels = Object.keys(wasteTypeStats);
-    const pieValues = Object.values(wasteTypeStats);
+    const pieValues = Object.values(wasteTypeStats).map(val => Math.round(val * 100) / 100);
 
     // Process disposition distribution for donut chart
     const dispositionStats = {};
     data.forEach(item => {
       const disposition = item.Disposition || 'Unknown';
-      dispositionStats[disposition] = (dispositionStats[disposition] || 0) + (parseFloat(item.Weight) || 0);
+      const weightInKg = convertToKg(item.Weight, item.Unit);
+      dispositionStats[disposition] = (dispositionStats[disposition] || 0) + weightInKg;
     });
 
     const donutLabels = Object.keys(dispositionStats);
-    const donutValues = Object.values(dispositionStats);
+    const donutValues = Object.values(dispositionStats).map(val => Math.round(val * 100) / 100);
 
-    // Create chart configurations with enhanced styling and dual y-axes
+    // FIXED LINE CHART CONFIGURATION
     const lineChartConfig = {
-      grid: {
-        show: true,
-        strokeDashArray: 2,
-        borderColor: '#f1f5f9',
-        padding: {
-          left: 2,
-          right: 2,
-          top: -26
-        },
-      },
       series: [
         {
           name: "Daily Weight (kg)",
           type: "area",
           data: dailyWeights,
-          color: "#3b82f6",
+          yAxisIndex: 0,
         },
         {
           name: "Daily Count",
           type: "line",
           data: dailyCounts,
-          color: "#8b5cf6",
+          yAxisIndex: 1,
         },
       ],
       chart: {
         height: 400,
-        maxWidth: "100%",
         type: "line",
         fontFamily: "Inter, sans-serif",
-        dropShadow: {
-          enabled: true,
-          color: '#000',
-          top: 18,
-          left: 7,
-          blur: 10,
-          opacity: 0.1,
-        },
         toolbar: {
           show: false,
         },
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800,
+        },
       },
+      colors: ["#3b82f6", "#8b5cf6"],
+      stroke: {
+        width: [0, 3],
+        curve: 'smooth',
+      },
+      fill: {
+        type: ["gradient", "solid"],
+        gradient: {
+          shade: 'light',
+          type: 'vertical',
+          shadeIntensity: 0.3,
+          gradientToColors: ['#60a5fa'],
+          inverseColors: false,
+          opacityFrom: 0.6,
+          opacityTo: 0.1,
+          stops: [0, 100],
+        },
+      },
+      dataLabels: {
+        enabled: false,
+      },
+      grid: {
+        show: true,
+        borderColor: '#f1f5f9',
+        strokeDashArray: 2,
+        padding: {
+          left: 10,
+          right: 10,
+          top: 10,
+          bottom: 10,
+        },
+      },
+      xaxis: {
+        categories: last7Days,
+        labels: {
+          style: {
+            colors: '#64748b',
+            fontSize: '12px',
+            fontWeight: 500,
+          }
+        },
+        axisBorder: {
+          show: false,
+        },
+        axisTicks: {
+          show: false,
+        },
+      },
+      yaxis: [
+        {
+          seriesName: "Daily Weight (kg)",
+          title: {
+            text: "Weight (kg)",
+            style: {
+              color: '#3b82f6',
+              fontSize: '14px',
+              fontWeight: 600,
+            }
+          },
+          labels: {
+            style: {
+              colors: '#3b82f6',
+              fontSize: '12px',
+              fontWeight: 500,
+            },
+            formatter: function (value) {
+              return value.toFixed(1) + ' kg';
+            }
+          },
+          min: 0,
+          forceNiceScale: true,
+        },
+        {
+          opposite: true,
+          seriesName: "Daily Count",
+          title: {
+            text: "Item Count",
+            style: {
+              color: '#8b5cf6',
+              fontSize: '14px',
+              fontWeight: 600,
+            }
+          },
+          labels: {
+            style: {
+              colors: '#8b5cf6',
+              fontSize: '12px',
+              fontWeight: 500,
+            },
+            formatter: function (value) {
+              return Math.round(value);
+            }
+          },
+          min: 0,
+          forceNiceScale: true,
+        },
+      ],
       tooltip: {
-        enabled: true,
         shared: true,
         intersect: false,
         theme: 'light',
@@ -296,88 +273,32 @@ export default function Dashboard() {
       legend: {
         show: true,
         position: 'top',
+        horizontalAlign: 'right',
         fontSize: '14px',
         fontFamily: 'Inter, sans-serif',
         fontWeight: 500,
-      },
-      fill: {
-        type: ["gradient", "solid"],
-        gradient: {
-          opacityFrom: 0.6,
-          opacityTo: 0.1,
-          stops: [0, 100],
+        markers: {
+          width: 12,
+          height: 12,
+          radius: 6,
+        },
+        itemMargin: {
+          horizontal: 10,
+          vertical: 5,
         },
       },
-      dataLabels: {
-        enabled: false,
-      },
-      stroke: {
-        width: [0, 4],
-        curve: 'smooth',
-      },
-      xaxis: {
-        categories: last7Days,
-        labels: {
-          show: true,
-          style: {
-            colors: '#64748b',
-            fontSize: '12px',
-          }
-        },
-        axisBorder: {
-          show: false,
-        },
-        axisTicks: {
-          show: false,
-        },
-      },
-      yaxis: [
+      responsive: [
         {
-          title: {
-            text: "Weight (kg)",
-            style: {
-              color: '#3b82f6',
-              fontSize: '12px',
-              fontWeight: 500,
-            }
-          },
-          labels: {
-            style: {
-              colors: '#3b82f6',
-              fontSize: '12px',
+          breakpoint: 768,
+          options: {
+            chart: {
+              height: 300,
             },
-            formatter: function (value) {
-              return value.toFixed(1) + 'kg';
-            }
-          },
-          min: 0,
-          max: function(max) {
-            return Math.max(max * 1.1, 1); // Ensure minimum scale of 1kg
-          }
-        },
-        {
-          opposite: true,
-          title: {
-            text: "Item Count",
-            style: {
-              color: '#8b5cf6',
-              fontSize: '12px',
-              fontWeight: 500,
-            }
-          },
-          labels: {
-            style: {
-              colors: '#8b5cf6',
-              fontSize: '12px',
+            legend: {
+              position: 'bottom',
+              horizontalAlign: 'center',
             },
-            formatter: function (value) {
-              return Math.round(value);
-            }
           },
-          min: 0,
-          max: function(max) {
-            return Math.max(max * 1.1, 5); // Ensure minimum scale of 5 items
-          }
         },
       ],
     };
@@ -533,36 +454,45 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && chartData.lineChart) {
-      // Wait for the divs to exist before rendering charts
-      const el1 = document.querySelector("#column-chart");
-      const el2 = document.querySelector("#pie-chart");
-      const el3 = document.querySelector("#donut-chart");
+      // Destroy existing charts
+      Object.values(chartRefs.current).forEach(chart => {
+        if (chart) {
+          chart.destroy();
+        }
+      });
 
-      let chart1, chart2, chart3;
+      // Wait for DOM elements to be available
+      setTimeout(() => {
+        const el1 = document.querySelector("#column-chart");
+        const el2 = document.querySelector("#pie-chart");
+        const el3 = document.querySelector("#donut-chart");
 
-      if (el1 && chartData.lineChart) {
-        chart1 = new ApexCharts(el1, chartData.lineChart);
-        chart1.render();
-      }
-      if (el2 && chartData.pieChart) {
-        chart2 = new ApexCharts(el2, chartData.pieChart);
-        chart2.render();
-      }
-      if (el3 && chartData.donutChart) {
-        chart3 = new ApexCharts(el3, chartData.donutChart);
-        chart3.render();
-      }
-
-      // Cleanup function to destroy charts if component unmounts
-      return () => {
-        if (chart1) chart1.destroy();
-        if (chart2) chart2.destroy();
-        if (chart3) chart3.destroy();
-      };
+        if (el1 && chartData.lineChart) {
+          chartRefs.current.lineChart = new ApexCharts(el1, chartData.lineChart);
+          chartRefs.current.lineChart.render();
+        }
+        if (el2 && chartData.pieChart) {
+          chartRefs.current.pieChart = new ApexCharts(el2, chartData.pieChart);
+          chartRefs.current.pieChart.render();
+        }
+        if (el3 && chartData.donutChart) {
+          chartRefs.current.donutChart = new ApexCharts(el3, chartData.donutChart);
+          chartRefs.current.donutChart.render();
+        }
+      }, 100);
     }
+
+    // Cleanup function
+    return () => {
+      Object.values(chartRefs.current).forEach(chart => {
+        if (chart) {
+          chart.destroy();
+        }
+      });
+    };
   }, [loading, chartData]);
 
-  // Calculate top waste types
+  // Calculate top waste types with proper unit conversion
   const getTopWasteTypes = () => {
     const wasteTypeStats = {};
     
@@ -575,7 +505,8 @@ export default function Dashboard() {
           count: 0
         };
       }
-      wasteTypeStats[type].weight += parseFloat(item.Weight) || 0;
+      const weightInKg = convertToKg(item.Weight, item.Unit);
+      wasteTypeStats[type].weight += weightInKg;
       wasteTypeStats[type].count += 1;
     });
 
@@ -585,17 +516,25 @@ export default function Dashboard() {
       .slice(0, 5); // Top 5 waste types
   };
 
-  // Calculate stats
-  const totalWeight = wasteData.reduce((sum, item) => sum + (parseFloat(item.Weight) || 0), 0);
+  // Calculate stats with proper unit conversion
+  const totalWeight = wasteData.reduce((sum, item) => {
+    const weightInKg = convertToKg(item.Weight, item.Unit);
+    return sum + weightInKg;
+  }, 0);
   const totalItems = wasteData.length;
   const totalUsers = [...new Set(wasteData.map(item => item.InputBy))].length;
 
   // Today's data
   const today = new Date().toISOString().split('T')[0];
-  const todayData = wasteData.filter(item => 
-    item.created_at && item.created_at.split('T')[0] === today
-  );
-  const todayWeight = todayData.reduce((sum, item) => sum + (parseFloat(item.Weight) || 0), 0);
+  const todayData = wasteData.filter(item => {
+    if (!item.created_at) return false;
+    const itemDate = new Date(item.created_at).toISOString().split('T')[0];
+    return itemDate === today;
+  });
+  const todayWeight = todayData.reduce((sum, item) => {
+    const weightInKg = convertToKg(item.Weight, item.Unit);
+    return sum + weightInKg;
+  }, 0);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -683,6 +622,23 @@ export default function Dashboard() {
               <div className="text-gray-600 font-medium">Loading dashboard data...</div>
             </div>
           </div>
+        ) : error ? (
+          <div className="px-8 pb-8">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <button 
+                onClick={fetchWasteReports}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Retry
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="px-8 pb-8">
             {/* Main Chart Section */}
@@ -690,7 +646,7 @@ export default function Dashboard() {
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 mb-2">Waste Processing Trends</h2>
-                  <p className="text-gray-600">Daily weight and item count over the last 7 days</p>
+                  <p className="text-gray-600">Daily weight and item count over the last 7 days (all weights converted to kg)</p>
                 </div>
                 <div className="flex space-x-3">
                   <button className="px-4 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors">
@@ -754,7 +710,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">Waste Types</h3>
-                    <p className="text-sm text-gray-600">Distribution by weight</p>
+                    <p className="text-sm text-gray-600">Distribution by weight (kg)</p>
                   </div>
                   <div className="flex space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -785,7 +741,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">Dispositions</h3>
-                    <p className="text-sm text-gray-600">Processing methods</p>
+                    <p className="text-sm text-gray-600">Processing methods (kg)</p>
                   </div>
                   <div className="flex space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

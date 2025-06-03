@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, Filter, Download, Eye, Search, BarChart3, TrendingUp, Recycle, Package, Users, Clock } from "lucide-react";
 import Sidebar from "@/Components/SideBar";
+import { Head } from '@inertiajs/react';
 
 export default function WasteReports() {
   const [reports, setReports] = useState([]);
@@ -10,9 +11,7 @@ export default function WasteReports() {
   const [selectedDate, setSelectedDate] = useState('today');
   
   // Add the missing state variables
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWasteType, setSelectedWasteType] = useState('all');
-  const [selectedDisposition, setSelectedDisposition] = useState('all');
+  const [customDate, setCustomDate] = useState('');
 
   // Stats state
   const [stats, setStats] = useState({
@@ -186,58 +185,24 @@ export default function WasteReports() {
     let filtered = [...reports];
     
     // Filter by date
-    if (selectedDate !== 'all') {
-      if (selectedDate === 'today') {
-        filtered = filtered.filter(item => isToday(item.created_at));
-      } else if (selectedDate === 'yesterday') {
-        filtered = filtered.filter(item => isYesterday(item.created_at));
-      } else if (selectedDate === 'last7days') {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        weekAgo.setHours(0, 0, 0, 0);
-        
-        filtered = filtered.filter(item => {
-          const itemDate = new Date(item.created_at);
-          return itemDate >= weekAgo;
-        });
-      } else {
-        // Handle specific date selection
-        const targetDate = selectedDate;
-        filtered = filtered.filter(item => 
-          item.created_at?.split('T')[0] === targetDate
-        );
-      }
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
+    if (selectedDate === 'today') {
+      filtered = filtered.filter(item => isToday(item.created_at));
+    } else if (selectedDate === 'yesterday') {
+      filtered = filtered.filter(item => isYesterday(item.created_at));
+    } else if (selectedDate === 'custom' && customDate) {
       filtered = filtered.filter(item => 
-        item.InputBy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.TypeOfWaste?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.Disposition?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.created_at?.split('T')[0] === customDate
       );
     }
     
-    // Filter by waste type
-    if (selectedWasteType !== 'all') {
-      filtered = filtered.filter(item => item.TypeOfWaste === selectedWasteType);
-    }
-    
-    // Filter by disposition
-    if (selectedDisposition !== 'all') {
-      filtered = filtered.filter(item => item.Disposition === selectedDisposition);
-    }
+
     
     setFilteredReports(filtered);
-  }, [reports, selectedDate, searchTerm, selectedWasteType, selectedDisposition]);
+  }, [reports, selectedDate, customDate]);
 
   useEffect(() => {
     fetchWasteReports();
   }, []);
-
-  // Get unique values for filter dropdowns
-  const uniqueWasteTypes = [...new Set(reports.map(item => item.TypeOfWaste))].filter(Boolean);
-  const uniqueDispositions = [...new Set(reports.map(item => item.Disposition))].filter(Boolean);
 
   // Export to CSV
   const exportToCSV = () => {
@@ -267,7 +232,8 @@ export default function WasteReports() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Head title="Waste Reports" />
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -281,7 +247,8 @@ export default function WasteReports() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Head title="Waste Reports" />
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -303,188 +270,139 @@ export default function WasteReports() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <Head title="Waste Reports" />
       <Sidebar />
-      <div className="flex-1">
-        {/* Header */}
-        <div className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
+      <div className="flex-1 overflow-auto">
+        {/* Header Section */}
+        <div className="p-8 pb-0">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Waste Reports</h1>
+            <p className="text-gray-600">View and analyze waste processing data</p>
+          </div>
+
+          {/* Quick Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 p-6 border border-blue-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Waste Reports</h1>
-                  <p className="text-sm text-gray-500">View and analyze waste processing data</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Today</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.today.weight.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">kg</span></p>
                 </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  {stats.today.items} items
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg shadow-amber-100 p-6 border border-amber-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Yesterday</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.yesterday.weight.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">kg</span></p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  {stats.yesterday.items} items
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg shadow-green-100 p-6 border border-green-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Last 7 Days</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.lastWeek.weight.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">kg</span></p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  {stats.lastWeek.items} items
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-8 pb-8">
+          {/* Controls Section */}
+          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 p-8 mb-8">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Filter Reports</h2>
+                <p className="text-gray-600">Customize your view with filters and export data</p>
               </div>
               <button
                 onClick={exportToCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
               </button>
             </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900">Today</h3>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Items:</span>
-                  <span className="font-medium">{stats.today.items}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Weight:</span>
-                  <span className="font-medium">{stats.today.weight.toFixed(2)} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Users:</span>
-                  <span className="font-medium">{stats.today.users}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900">Yesterday</h3>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Items:</span>
-                  <span className="font-medium">{stats.yesterday.items}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Weight:</span>
-                  <span className="font-medium">{stats.yesterday.weight.toFixed(2)} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Users:</span>
-                  <span className="font-medium">{stats.yesterday.users}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900">Last 7 Days</h3>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Items:</span>
-                  <span className="font-medium">{stats.lastWeek.items}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Weight:</span>
-                  <span className="font-medium">{stats.lastWeek.weight.toFixed(2)} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Users:</span>
-                  <span className="font-medium">{stats.lastWeek.users}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Filter className="w-5 h-5 text-gray-500" />
-              <h3 className="font-semibold text-gray-900">Filters</h3>
-            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {/* Date Filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Today/Yesterday Buttons */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <select
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last7days">Last 7 Days</option>
-                </select>
-              </div>
-
-              {/* Search */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search user, waste type..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Quick Filters</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedDate('today')}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedDate === 'today'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setSelectedDate('yesterday')}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedDate === 'yesterday'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Yesterday
+                  </button>
                 </div>
               </div>
 
-              {/* Waste Type Filter */}
+              {/* Calendar Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Waste Type</label>
-                <select
-                  value={selectedWasteType}
-                  onChange={(e) => setSelectedWasteType(e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Custom Date</label>
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => {
+                    setCustomDate(e.target.value);
+                    setSelectedDate('custom');
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  {uniqueWasteTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                />
               </div>
 
-              {/* Disposition Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Disposition</label>
-                <select
-                  value={selectedDisposition}
-                  onChange={(e) => setSelectedDisposition(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Dispositions</option>
-                  {uniqueDispositions.map(disposition => (
-                    <option key={disposition} value={disposition}>{disposition}</option>
-                  ))}
-                </select>
-              </div>
+
 
               {/* Clear Filters */}
               <div className="flex items-end">
                 <button
                   onClick={() => {
                     setSelectedDate('today');
-                    setSearchTerm('');
-                    setSelectedWasteType('all');
-                    setSelectedDisposition('all');
+                    setCustomDate('');
                   }}
                   className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 >
@@ -495,10 +413,10 @@ export default function WasteReports() {
           </div>
 
           {/* Reports Table */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 overflow-hidden">
+            <div className="p-8 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900">
                   Waste Reports ({filteredReports.length} items)
                 </h3>
                 <div className="text-sm text-gray-500">

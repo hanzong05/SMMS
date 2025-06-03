@@ -3,40 +3,65 @@ import {
   BarChart3, 
   FileText, 
   Recycle, 
-  Zap, 
+  Settings, 
   TrendingUp, 
   Users, 
   LogOut, 
   Home,
-  Settings
+  Package
 } from "lucide-react";
+import { Link, usePage } from '@inertiajs/react';
 
 export default function Sidebar() {
-    const [activeItem, setActiveItem] = useState('waste'); // Track active navigation item
+    const { url } = usePage(); // Get current URL to determine active item
+    const { user } = usePage().props.auth || {}; // Get user info for role-based navigation
 
-    const navigationItems = [
-        { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/dashboard' },
-        { id: 'analytics', icon: BarChart3, label: 'Analytics', path: '/analytics' },
-        { id: 'reports', icon: FileText, label: 'Reports', path: '/reports' },
-        { id: 'waste', icon: Recycle, label: 'Waste Management', path: '/waste', active: true },
-        { id: 'efficiency', icon: Zap, label: 'Efficiency', path: '/efficiency' },
-        { id: 'trends', icon: TrendingUp, label: 'Trends', path: '/trends' },
-        { id: 'team', icon: Users, label: 'Team', path: '/team' },
-        { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' }
-    ];
+    // Define navigation items based on user role
+    const getNavigationItems = () => {
+        const baseItems = [
+            { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/dashboard' },
+            { id: 'process-waste', icon: Recycle, label: 'Process Waste', path: '/ProcessWaste' },
+            { id: 'reports', icon: FileText, label: 'Reports', path: '/Reports' },
+        ];
 
-    const handleNavClick = (itemId) => {
-        setActiveItem(itemId);
-        // Here you would typically handle navigation
-        console.log(`Navigating to: ${itemId}`);
+        // Add admin-only items if user is admin
+        if (user?.role === 'admin') {
+            baseItems.push(
+                { id: 'user-management', icon: Users, label: 'User Management', path: '/UserManagement' },
+                { id: 'waste-config', icon: Settings, label: 'Waste Config', path: '/WasteConfig' }
+            );
+        }
+
+        return baseItems;
+    };
+
+    const navigationItems = getNavigationItems();
+
+    // Determine active item based on current URL
+    const getActiveItem = () => {
+        if (url.startsWith('/dashboard')) return 'dashboard';
+        if (url.startsWith('/ProcessWaste')) return 'process-waste';
+        if (url.startsWith('/Reports')) return 'reports';
+        if (url.startsWith('/UserManagement')) return 'user-management';
+        if (url.startsWith('/WasteConfig')) return 'waste-config';
+        return 'dashboard'; // default
+    };
+
+    const activeItem = getActiveItem();
+
+    const handleLogout = () => {
+        // Use Inertia to handle logout
+        window.location.href = '/logout';
     };
 
     return (
         <div className="w-20 bg-white border-r border-gray-200 h-screen flex flex-col items-center py-6 shadow-sm">
             {/* Logo/Brand */}
-            <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3 text-white mb-8 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                <Recycle className="h-8 w-8" />
-            </div>
+            <Link href="/dashboard">
+                <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3 text-white mb-8 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                    <Recycle className="h-8 w-8" />
+                </div>
+            </Link>
 
             {/* Navigation Icons */}
             <div className="flex-1 flex flex-col justify-between w-full px-2">
@@ -46,11 +71,11 @@ export default function Sidebar() {
                         const isActive = activeItem === item.id;
                         
                         return (
-                            <div
+                            <Link
                                 key={item.id}
-                                onClick={() => handleNavClick(item.id)}
+                                href={item.path}
                                 className={`
-                                    group relative p-3 rounded-xl transition-all duration-200 cursor-pointer
+                                    group relative p-3 rounded-xl transition-all duration-200 cursor-pointer block
                                     ${isActive 
                                         ? 'bg-blue-50 border-2 border-blue-200 shadow-sm' 
                                         : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-100'
@@ -78,15 +103,18 @@ export default function Sidebar() {
                                 {isActive && (
                                     <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full"></div>
                                 )}
-                            </div>
+                            </Link>
                         );
                     })}
                 </nav>
 
                 {/* Logout Icon at Bottom */}
                 <div className="border-t border-gray-100 pt-4">
-                    <div
-                        className="group relative p-3 rounded-xl hover:bg-red-50 transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-red-100"
+                    <Link
+                        href="/logout"
+                        method="post"
+                        as="button"
+                        className="group relative p-3 rounded-xl hover:bg-red-50 transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-red-100 w-full"
                         title="Logout"
                     >
                         <LogOut className="h-6 w-6 text-gray-500 group-hover:text-red-500 transition-colors" />
@@ -96,7 +124,7 @@ export default function Sidebar() {
                             Logout
                             <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
                         </div>
-                    </div>
+                    </Link>
                 </div>
             </div>
         </div>

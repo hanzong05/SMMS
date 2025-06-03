@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Recycle, Package, CheckCircle, AlertCircle, X } from "lucide-react";
 import Sidebar from "@/Components/SideBar";
 import { usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 
 export default function ProcessWaste() {
   const [items, setItems] = useState([]);
@@ -186,7 +187,8 @@ export default function ProcessWaste() {
   // Show loading state while fetching data
   if (loadingData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Head title="Process Waste" />
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -201,7 +203,8 @@ export default function ProcessWaste() {
   // Show error state if data loading failed
   if (dataError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Head title="Process Waste" />
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -223,31 +226,62 @@ export default function ProcessWaste() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <Head title="Process Waste" />
       <Sidebar />
-      <div className="flex-1">
-        {/* Simple Header */}
-        <div className="bg-white shadow-sm">
-          <div className="max-w-6xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Recycle className="w-6 h-6 text-white" />
-                </div>
+      <div className="flex-1 overflow-auto">
+        {/* Header Section */}
+        <div className="p-8 pb-0">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Waste Management</h1>
+            <p className="text-gray-600">Track and process production waste efficiently</p>
+          </div>
+
+          {/* Quick Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 p-6 border border-blue-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Waste Management</h1>
-                  <p className="text-sm text-gray-500">Track production waste</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Items</p>
+                  <p className="text-2xl font-bold text-gray-900">{items.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <Package className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Online</span>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg shadow-green-100 p-6 border border-green-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Recyclable</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {items.filter(item => item.disposition === 'Recycle').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <Recycle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg shadow-purple-100 p-6 border border-purple-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Complete</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {items.filter(item => item.type && item.disposition && item.weight).length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="px-8 pb-8">
           {/* Status Message */}
           {message && (
             <div className={`mb-6 p-4 rounded-lg ${status === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
@@ -270,20 +304,26 @@ export default function ProcessWaste() {
 
           {/* Add Item Button */}
           {!alreadySubmitted && (
-            <div className="mb-6">
-              <button
-                onClick={handleAddItem}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Waste Item
-              </button>
+            <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 p-8 mb-8">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">Add Waste Items</h2>
+                  <p className="text-gray-600">Start by adding waste items to process</p>
+                </div>
+                <button
+                  onClick={handleAddItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Waste Item
+                </button>
+              </div>
             </div>
           )}
 
           {/* Items List */}
           {items.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg">
+            <div className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 p-12 text-center">
               {!alreadySubmitted ? (
                 <>
                   <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -310,7 +350,7 @@ export default function ProcessWaste() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Already Submitted Alert inside items area */}
               {alreadySubmitted && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -325,27 +365,28 @@ export default function ProcessWaste() {
                   </div>
                 </div>
               )}
+              
               {items.map((item, index) => (
-                <div key={item.id} className="bg-white rounded-lg p-6 shadow-sm border">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="font-medium text-gray-900">Item #{index + 1}</h3>
+                <div key={item.id} className="bg-white rounded-2xl shadow-lg shadow-blue-100 border border-blue-100 p-8">
+                  <div className="flex items-start justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-900">Item #{index + 1}</h3>
                     <button
                       onClick={() => handleRemoveItem(item.id)}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       title="Remove item"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Waste Type - Using Database Data */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Waste Type
                       </label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         value={item.type}
                         onChange={(e) => handleInputChange(item.id, "type", e.target.value)}
                       >
@@ -360,13 +401,13 @@ export default function ProcessWaste() {
 
                     {/* Disposition - Using Database Data */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Disposition
                       </label>
                       <select
                         value={item.disposition}
                         onChange={(e) => handleInputChange(item.id, "disposition", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Select disposition...</option>
                         {dispositions.map((disp) => (
@@ -379,7 +420,7 @@ export default function ProcessWaste() {
 
                     {/* Weight */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Weight
                       </label>
                       <input
@@ -387,19 +428,19 @@ export default function ProcessWaste() {
                         onChange={(e) => handleInputChange(item.id, "weight", e.target.value)}
                         type="number"
                         placeholder="Enter weight"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
 
                     {/* Unit */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Unit
                       </label>
                       <select
                         value={item.unit}
                         onChange={(e) => handleInputChange(item.id, "unit", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="kg">kg</option>
                         <option value="lbs">lbs</option>
@@ -410,16 +451,16 @@ export default function ProcessWaste() {
                   </div>
 
                   {/* Item Status Indicator */}
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-6 flex items-center gap-2">
                     {item.type && item.disposition && item.weight ? (
-                      <div className="flex items-center gap-1 text-green-600">
+                      <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full">
                         <CheckCircle className="w-4 h-4" />
-                        <span className="text-sm">Complete</span>
+                        <span className="text-sm font-medium">Complete</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 text-amber-600">
+                      <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
                         <AlertCircle className="w-4 h-4" />
-                        <span className="text-sm">Incomplete</span>
+                        <span className="text-sm font-medium">Incomplete</span>
                       </div>
                     )}
                   </div>
@@ -431,37 +472,13 @@ export default function ProcessWaste() {
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={handleSave}
-                    className="flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    className="flex items-center gap-2 px-8 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-lg font-semibold"
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="w-5 h-5" />
                     Save All Items
                   </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Simple Stats */}
-          {items.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">{items.length}</div>
-                <div className="text-sm text-gray-600">Total Items</div>
-              </div>
-              
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {items.filter(item => item.disposition === 'Recycle').length}
-                </div>
-                <div className="text-sm text-gray-600">Recyclable</div>
-              </div>
-              
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {items.filter(item => item.type && item.disposition && item.weight).length}
-                </div>
-                <div className="text-sm text-gray-600">Complete</div>
-              </div>
             </div>
           )}
         </div>
