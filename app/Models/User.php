@@ -24,7 +24,7 @@ class User extends Authenticatable
         'role',
         'department',
         'status',
-        'last_login_at',
+        'permission_level', // Make sure this is here
     ];
 
     /**

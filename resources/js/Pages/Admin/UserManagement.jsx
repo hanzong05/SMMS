@@ -18,55 +18,45 @@ export default function UserManagement() {
     department: '',
     password: '',
     password_confirmation: '',
-    permissions: [] // Permissions array in user form state
+    permission_level: 'view' // Changed from permissions array to single permission level
   });
 
   const roles = ['admin', 'supervisor', 'user'];
   const departments = ['Operations', 'Production', 'Quality Control', 'Environmental'];
-  const permissions = [
-    { id: 'view_users', label: 'View Users' },
-    { id: 'create_users', label: 'Create Users' },
-    { id: 'edit_users', label: 'Edit Users' },
-    { id: 'delete_users', label: 'Delete Users' },
-    { id: 'manage_waste', label: 'Manage Waste' },
-    { id: 'view_reports', label: 'View Reports' },
-    { id: 'manage_dispositions', label: 'Manage Dispositions' }
+  
+  // Simplified permission levels
+  const permissionLevels = [
+    { value: 'view', label: 'View Only', description: 'Can only view information' },
+    { value: 'edit', label: 'View & Edit', description: 'Can view and modify information' }
   ];
 
-  // Add permission handling functions
-  const handlePermissionChange = (permissionId) => {
-    setUserForm(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(permissionId)
-        ? prev.permissions.filter(id => id !== permissionId)
-        : [...prev.permissions, permissionId]
-    }));
-  };
-
-  // Add permission section to the modal form
   const renderPermissionsSection = () => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-      <div className="space-y-2">
-        {permissions.map(permission => (
-          <div key={permission.id} className="flex items-center">
+      <label className="block text-sm font-medium text-gray-700 mb-2">Permission Level</label>
+      <div className="space-y-3">
+        {permissionLevels.map(level => (
+          <div key={level.value} className="flex items-start">
             <input
-              type="checkbox"
-              id={permission.id}
-              checked={userForm.permissions.includes(permission.id)}
-              onChange={() => handlePermissionChange(permission.id)}
-              className="h-4 w-4 text-blue-600 rounded border-gray-300"
+              type="radio"
+              id={level.value}
+              name="permission_level"
+              value={level.value}
+              checked={userForm.permission_level === level.value}
+              onChange={(e) => setUserForm(prev => ({...prev, permission_level: e.target.value}))}
+              className="h-4 w-4 text-blue-600 border-gray-300 mt-1"
             />
-            <label htmlFor={permission.id} className="ml-2 text-sm text-gray-700">
-              {permission.label}
-            </label>
+            <div className="ml-3">
+              <label htmlFor={level.value} className="text-sm font-medium text-gray-700">
+                {level.label}
+              </label>
+              <p className="text-xs text-gray-500">{level.description}</p>
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 
-  // Modify the handleUserSubmit function to include permissions
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     
@@ -106,7 +96,7 @@ export default function UserManagement() {
         },
         body: JSON.stringify({
           ...userForm,
-          permissions: userForm.permissions
+          permission_level: userForm.permission_level
         }),
       });
       
@@ -115,15 +105,7 @@ export default function UserManagement() {
         await fetchUsers();
         setShowModal(false);
         setEditingUser(null);
-        setUserForm({
-          name: '',
-          email: '',
-          role: 'user',
-          department: '',
-          password: '',
-          password_confirmation: '',
-          permissions: []
-        });
+        resetForm();
         setError(null);
       } else {
         const data = await response.json();
@@ -165,6 +147,18 @@ export default function UserManagement() {
     }
   };
 
+  const resetForm = () => {
+    setUserForm({
+      name: '',
+      email: '',
+      role: 'user',
+      department: '',
+      password: '',
+      password_confirmation: '',
+      permission_level: 'view'
+    });
+  };
+
   const openUserModal = (user = null) => {
     if (user) {
       setEditingUser(user);
@@ -175,11 +169,11 @@ export default function UserManagement() {
         department: user.department || '',
         password: '',
         password_confirmation: '',
-        permissions: user.permissions || [] // Add this line
+        permission_level: user.permission_level || 'view'
       });
     } else {
       setEditingUser(null);
-      setUserForm({ name: '', email: '', role: 'user', department: '', password: '', password_confirmation: '' });
+      resetForm();
     }
     setError(null);
     setShowModal(true);
@@ -197,12 +191,15 @@ export default function UserManagement() {
     return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
   };
 
+  const getPermissionBadgeColor = (permission) => {
+    return permission === 'edit' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800';
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString();
   };
   
-  // Fetch users from API
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -231,7 +228,6 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  // Add this filtering logic after the useEffect hook and before the return statement
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -311,13 +307,13 @@ export default function UserManagement() {
             <div className="bg-white rounded-2xl shadow-lg shadow-purple-100 p-6 border border-purple-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Supervisors</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Edit Access</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {users.filter(u => u.role === 'supervisor').length}
+                    {users.filter(u => u.permission_level === 'edit').length}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <UserX className="w-6 h-6 text-white" />
+                  <Edit2 className="w-6 h-6 text-white" />
                 </div>
               </div>
             </div>
@@ -393,6 +389,7 @@ export default function UserManagement() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permission Level</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -422,6 +419,11 @@ export default function UserManagement() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(user.status || 'active')}`}>
                           {(user.status || 'active').charAt(0).toUpperCase() + (user.status || 'active').slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPermissionBadgeColor(user.permission_level || 'view')}`}>
+                          {user.permission_level === 'edit' ? 'View & Edit' : 'View Only'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -461,7 +463,7 @@ export default function UserManagement() {
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h3>
               
-              <div className="space-y-4">
+              <form onSubmit={handleUserSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                   <input
@@ -540,8 +542,15 @@ export default function UserManagement() {
                   </>
                 )}
                 
-                {/* Add the permissions section here, before the buttons */}
+                {/* Simplified Permissions Section */}
                 {renderPermissionsSection()}
+                
+                {/* Error display */}
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
                 
                 <div className="flex justify-end gap-2 mt-6">
                   <button
@@ -549,21 +558,21 @@ export default function UserManagement() {
                     onClick={() => {
                       setShowModal(false);
                       setEditingUser(null);
-                      setUserForm({ name: '', email: '', role: 'user', department: '', password: '', password_confirmation: '', permissions: [] });
+                      resetForm();
+                      setError(null);
                     }}
                     className="px-4 py-2 text-gray-600 hover:text-gray-800"
                   >
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    onClick={handleUserSubmit}
+                    type="submit"
                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                   >
                     {editingUser ? 'Update' : 'Create'}
                   </button>
                 </div>
-                </div>
+              </form>
             </div>
           </div>
         )}

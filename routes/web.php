@@ -1,98 +1,224 @@
-    <?php
+<?php
 
-    use App\Http\Controllers\ProfileController;
-    use App\Http\Controllers\WasteController;
-    use App\Http\Controllers\WasteConfigController;
-    use App\Http\Controllers\UserController; // Add this import
-    use Illuminate\Foundation\Application;
-    use Illuminate\Support\Facades\Route;
-    use Illuminate\Support\Facades\Auth;
-    use Illuminate\Support\Facades\DB; // Add this for the waste-reports route
-    use Illuminate\Http\Request;
-    use Inertia\Inertia;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WasteController;
+use App\Http\Controllers\WasteConfigController;
+use App\Http\Controllers\UserController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
-    Route::get('/', function () {
-        return Inertia::render('Welcome', [
-            'canLogin' => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'laravelVersion' => Application::VERSION,
-            'phpVersion' => PHP_VERSION,
-        ]);
-    });
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
+});
 
+/*
+|--------------------------------------------------------------------------
+| Routes accessible to ALL authenticated users (including view-only)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Dashboard - everyone can access
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->middleware(['auth', 'verified'])->name('dashboard');
+        $user = Auth::user();
+        $isViewOnly = $user->permission_level === 'view';
+        $canEdit = $user->permission_level === 'edit';
+        
+        return Inertia::render('Dashboard', [
+            'user' => $user,
+            'permissions' => [
+                'canCreate' => $canEdit,
+                'canEdit' => $canEdit,
+                'canDelete' => $canEdit,
+                'isViewOnly' => $isViewOnly,
+                'isAdmin' => $user->role === 'admin',
+                'isSupervisor' => in_array($user->role, ['admin', 'supervisor']),
+            ]
+        ]);
+    })->name('dashboard');
 
+    // Process Waste (View Mode) - everyone can view
     Route::get('/ProcessWaste', function () {
+        $user = Auth::user();
+        $isViewOnly = $user->permission_level === 'view';
+        $canEdit = $user->permission_level === 'edit';
+        
         return Inertia::render('User/ProcessWaste', [
-            'user' => Auth::user()
+            'user' => $user,
+            'permissions' => [
+                'canCreate' => $canEdit,
+                'canEdit' => $canEdit,
+                'canDelete' => $canEdit,
+                'isViewOnly' => $isViewOnly,
+            ]
         ]);
-    })->middleware(['auth', 'verified'])->name('ProcessWaste');
+    })->name('ProcessWaste');
 
-    Route::get('/WasteConfig', function(){
-        return Inertia::render('Admin/WasteConfigManager',[
-            'user' => Auth::user()
-        ]);
-    })->middleware(['auth','verified'])->name('WasteConfigManager');
-
+    // Reports - everyone can view
     Route::get('/Reports', function () {
+        $user = Auth::user();
+        $isViewOnly = $user->permission_level === 'view';
+        $canEdit = $user->permission_level === 'edit';
+        
         return Inertia::render('Public/Reports', [
-            'user' => Auth::user()
+            'user' => $user,
+            'permissions' => [
+                'canExport' => $canEdit,
+                'canCreateCustom' => $canEdit,
+                'isViewOnly' => $isViewOnly,
+            ]
         ]);
-    })->middleware(['auth', 'verified'])->name('Reports');
+    })->name('Reports');
 
-    Route::get('/AdvancedAnalytics', function () {
-        return Inertia::render('Public/AdvancedAnalytics', [
-            'user' => Auth::user()
-        ]);
-    })->middleware(['auth', 'verified'])->name('AdvancedAnalytics');
-
-    // Add User Management Page Route
-    Route::get('/UserManagement', function () {
-        return Inertia::render('Admin/UserManagement', [
-            'user' => Auth::user()
-        ]);
-    })->middleware(['auth', 'verified'])->name('UserManagement');
-
-    // Check submission route - Fixed the field name
+    // Check submission route - read-only operation
     Route::get('/check-submission', function (Request $request) {
-        $submitted = \App\Models\Waste::where('InputBy', $request->user_name) // Fixed: InputBy instead of inputBy
+        $submitted = \App\Models\Waste::where('InputBy', $request->user_name)
             ->whereDate('created_at', today())
             ->exists();
 
         return response()->json(['submitted' => $submitted]);
-    })->middleware(['auth']);
-
-    // API Routes for waste configuration and user management
-    Route::prefix('api')->middleware(['auth'])->group(function () {
-        // Waste Types Routes
-        Route::get('/waste-types', [WasteConfigController::class, 'getWasteTypes']);
-        Route::post('/waste-types', [WasteConfigController::class, 'storeWasteType']);
-        Route::put('/waste-types/{id}', [WasteConfigController::class, 'updateWasteType']);
-        Route::delete('/waste-types/{id}', [WasteConfigController::class, 'deleteWasteType']);
-
-        // Dispositions Routes
-        Route::get('/dispositions', [WasteConfigController::class, 'getDispositions']);
-        Route::post('/dispositions', [WasteConfigController::class, 'storeDisposition']);
-        Route::put('/dispositions/{id}', [WasteConfigController::class, 'updateDisposition']);
-        Route::delete('/dispositions/{id}', [WasteConfigController::class, 'deleteDisposition']);
-
-        // User Management API Routes - ADD THESE
-        Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{id}', [UserController::class, 'update']);
-        Route::delete('/users/{id}', [UserController::class, 'destroy']);
-        Route::post('/users/{id}/update-login', [UserController::class, 'updateLastLogin']);
     });
+});
 
-    Route::get('/api/waste-reports', function () {
+/*
+|--------------------------------------------------------------------------
+| Routes requiring WRITE permissions (blocked for view-only users)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Check if user has write permissions using inline middleware
+    Route::middleware([function ($request, $next) {
+        $user = $request->user();
+        $isViewOnly = $user->permission_level === 'view';
+        
+        if ($isViewOnly) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Access denied. You have view-only permissions.',
+                    'error' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Access denied. You have view-only permissions.');
+        }
+        
+        return $next($request);
+    }])->group(function () {
+        
+        // Waste management routes (write operations)
+        Route::post('/wastes', [WasteController::class, 'store']);
+        Route::put('/wastes/{id}', [WasteController::class, 'update']);
+        Route::delete('/wastes/{id}', [WasteController::class, 'destroy']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| SUPERVISOR and ADMIN routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Check if user is supervisor or admin using inline middleware
+    Route::middleware([function ($request, $next) {
+        $user = $request->user();
+        
+        if (!in_array($user->role, ['admin', 'supervisor'])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Access denied. Supervisor or Admin role required.',
+                    'error' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Access denied. Supervisor or Admin role required.');
+        }
+        
+        return $next($request);
+    }])->group(function () {
+        
+        // Advanced Analytics - supervisor and admin only
+        Route::get('/AdvancedAnalytics', function () {
+            return Inertia::render('Public/AdvancedAnalytics', [
+                'user' => Auth::user()
+            ]);
+        })->name('AdvancedAnalytics');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN-ONLY routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Check if user is admin using inline middleware
+    Route::middleware([function ($request, $next) {
+        $user = $request->user();
+        
+        if ($user->role !== 'admin') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Access denied. Admin role required.',
+                    'error' => 'INSUFFICIENT_PERMISSIONS'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Access denied. Admin role required.');
+        }
+        
+        return $next($request);
+    }])->group(function () {
+        
+        // Waste Configuration - admin only
+        Route::get('/WasteConfig', function(){
+            return Inertia::render('Admin/WasteConfigManager',[
+                'user' => Auth::user()
+            ]);
+        })->name('WasteConfigManager');
+
+        // User Management - admin only
+        Route::get('/UserManagement', function () {
+            return Inertia::render('Admin/UserManagement', [
+                'user' => Auth::user()
+            ]);
+        })->name('UserManagement');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| API Routes with Permission Controls
+|--------------------------------------------------------------------------
+*/
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    
+    // READ-ONLY API Routes (accessible to all authenticated users)
+    Route::get('/waste-types', [WasteConfigController::class, 'getWasteTypes']);
+    Route::get('/dispositions', [WasteConfigController::class, 'getDispositions']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/wastes', [WasteController::class, 'index']);
+    Route::get('/wastes/{id}', [WasteController::class, 'show']);
+    
+    // Waste reports with filtered data for view-only users
+    Route::get('/waste-reports', function () {
         try {
-            $reports = DB::table('wastes')
+            $user = Auth::user();
+            $isViewOnly = $user->permission_level === 'view';
+            
+            $query = DB::table('wastes')
                 ->select([
                     'id',
                     'TypeOfWaste',
-                    'Disposition', // Check your actual column name
+                    'Disposition',
                     'Weight',
                     'Unit',
                     'InputBy',
@@ -100,12 +226,25 @@
                     'created_at',
                     'updated_at'
                 ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->orderBy('created_at', 'desc');
+            
+            // For view-only users, limit data access
+            if ($isViewOnly) {
+                // Only show their own records
+                $query->where('InputBy', $user->name);
+            }
+            
+            $reports = $query->get();
             
             return response()->json([
                 'success' => true,
-                'data' => $reports
+                'data' => $reports,
+                'permissions' => [
+                    'canExport' => !$isViewOnly,
+                    'canEdit' => !$isViewOnly,
+                    'canDelete' => !$isViewOnly,
+                    'isViewOnly' => $isViewOnly,
+                ]
             ]);
             
         } catch (\Exception $e) {
@@ -115,23 +254,65 @@
                 'data' => []
             ], 500);
         }
-    })->middleware(['auth', 'verified']);
-
-    // Waste management routes
-    Route::middleware(['auth'])->group(function () {
-        // Main waste CRUD routes
-        Route::post('/wastes', [WasteController::class, 'store']);
-        Route::get('/wastes', [WasteController::class, 'index']);
-        Route::get('/wastes/{id}', [WasteController::class, 'show']);
-        Route::put('/wastes/{id}', [WasteController::class, 'update']);
-        Route::delete('/wastes/{id}', [WasteController::class, 'destroy']);
     });
+    
+    // WRITE OPERATIONS - Blocked for view-only users
+    Route::middleware([function ($request, $next) {
+        $user = $request->user();
+        $isViewOnly = $user->permission_level === 'view';
+        
+        if ($isViewOnly) {
+            return response()->json([
+                'message' => 'Access denied. You have view-only permissions.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
+        
+        return $next($request);
+    }])->group(function () {
+        
+        // Waste Type Management
+        Route::post('/waste-types', [WasteConfigController::class, 'storeWasteType']);
+        Route::put('/waste-types/{id}', [WasteConfigController::class, 'updateWasteType']);
+        Route::delete('/waste-types/{id}', [WasteConfigController::class, 'deleteWasteType']);
 
-    // Profile routes
-    Route::middleware('auth')->group(function () {
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+        // Dispositions Management
+        Route::post('/dispositions', [WasteConfigController::class, 'storeDisposition']);
+        Route::put('/dispositions/{id}', [WasteConfigController::class, 'updateDisposition']);
+        Route::delete('/dispositions/{id}', [WasteConfigController::class, 'deleteDisposition']);
     });
+    
+    // ADMIN-ONLY API Routes
+    Route::middleware([function ($request, $next) {
+        $user = $request->user();
+        
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'message' => 'Access denied. Admin role required.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
+        
+        return $next($request);
+    }])->group(function () {
+        
+        // User Management API Routes
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::post('/users/{id}/update-login', [UserController::class, 'updateLastLogin']);
+    });
+});
 
-    require __DIR__.'/auth.php';
+/*
+|--------------------------------------------------------------------------
+| Profile Routes (accessible to all authenticated users)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__.'/auth.php';
