@@ -94,31 +94,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | Routes requiring WRITE permissions (blocked for view-only users)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
-    
-    // Check if user has write permissions using inline middleware
-    Route::middleware([function ($request, $next) {
-        $user = $request->user();
-        $isViewOnly = $user->permission_level === 'view';
-        
-        if ($isViewOnly) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Access denied. You have view-only permissions.',
-                    'error' => 'INSUFFICIENT_PERMISSIONS'
-                ], 403);
-            }
-            return redirect()->back()->with('error', 'Access denied. You have view-only permissions.');
-        }
-        
-        return $next($request);
-    }])->group(function () {
-        
-        // Waste management routes (write operations)
-        Route::post('/wastes', [WasteController::class, 'store']);
-        Route::put('/wastes/{id}', [WasteController::class, 'update']);
-        Route::delete('/wastes/{id}', [WasteController::class, 'destroy']);
-    });
+Route::middleware(['auth', 'verified', 'permissions:write'])->group(function () {
+    // Waste management routes (write operations)
+    Route::post('/wastes', [WasteController::class, 'store']);
+    Route::put('/wastes/{id}', [WasteController::class, 'update']);
+    Route::delete('/wastes/{id}', [WasteController::class, 'destroy']);
 });
 
 /*
@@ -126,32 +106,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | SUPERVISOR and ADMIN routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
-    
-    // Check if user is supervisor or admin using inline middleware
-    Route::middleware([function ($request, $next) {
-        $user = $request->user();
-        
-        if (!in_array($user->role, ['admin', 'supervisor'])) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Access denied. Supervisor or Admin role required.',
-                    'error' => 'INSUFFICIENT_PERMISSIONS'
-                ], 403);
-            }
-            return redirect()->back()->with('error', 'Access denied. Supervisor or Admin role required.');
-        }
-        
-        return $next($request);
-    }])->group(function () {
-        
-        // Advanced Analytics - supervisor and admin only
-        Route::get('/AdvancedAnalytics', function () {
-            return Inertia::render('Public/AdvancedAnalytics', [
-                'user' => Auth::user()
-            ]);
-        })->name('AdvancedAnalytics');
-    });
+Route::middleware(['auth', 'verified', 'permissions:supervisor'])->group(function () {
+    // Advanced Analytics - supervisor and admin only
+    Route::get('/AdvancedAnalytics', function () {
+        return Inertia::render('Public/AdvancedAnalytics', [
+            'user' => Auth::user()
+        ]);
+    })->name('AdvancedAnalytics');
 });
 
 /*
@@ -159,39 +120,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | ADMIN-ONLY routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
-    
-    // Check if user is admin using inline middleware
-    Route::middleware([function ($request, $next) {
-        $user = $request->user();
-        
-        if ($user->role !== 'admin') {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Access denied. Admin role required.',
-                    'error' => 'INSUFFICIENT_PERMISSIONS'
-                ], 403);
-            }
-            return redirect()->back()->with('error', 'Access denied. Admin role required.');
-        }
-        
-        return $next($request);
-    }])->group(function () {
-        
-        // Waste Configuration - admin only
-        Route::get('/WasteConfig', function(){
-            return Inertia::render('Admin/WasteConfigManager',[
-                'user' => Auth::user()
-            ]);
-        })->name('WasteConfigManager');
+Route::middleware(['auth', 'verified', 'permissions:admin'])->group(function () {
+    // Waste Configuration - admin only
+    Route::get('/WasteConfig', function(){
+        return Inertia::render('Admin/WasteConfigManager',[
+            'user' => Auth::user()
+        ]);
+    })->name('WasteConfigManager');
 
-        // User Management - admin only
-        Route::get('/UserManagement', function () {
-            return Inertia::render('Admin/UserManagement', [
-                'user' => Auth::user()
-            ]);
-        })->name('UserManagement');
-    });
+    // User Management - admin only
+    Route::get('/UserManagement', function () {
+        return Inertia::render('Admin/UserManagement', [
+            'user' => Auth::user()
+        ]);
+    })->name('UserManagement');
 });
 
 /*
@@ -257,20 +199,7 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     });
     
     // WRITE OPERATIONS - Blocked for view-only users
-    Route::middleware([function ($request, $next) {
-        $user = $request->user();
-        $isViewOnly = $user->permission_level === 'view';
-        
-        if ($isViewOnly) {
-            return response()->json([
-                'message' => 'Access denied. You have view-only permissions.',
-                'error' => 'INSUFFICIENT_PERMISSIONS'
-            ], 403);
-        }
-        
-        return $next($request);
-    }])->group(function () {
-        
+    Route::middleware(['permissions:write'])->group(function () {
         // Waste Type Management
         Route::post('/waste-types', [WasteConfigController::class, 'storeWasteType']);
         Route::put('/waste-types/{id}', [WasteConfigController::class, 'updateWasteType']);
@@ -283,19 +212,7 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     });
     
     // ADMIN-ONLY API Routes
-    Route::middleware([function ($request, $next) {
-        $user = $request->user();
-        
-        if ($user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Access denied. Admin role required.',
-                'error' => 'INSUFFICIENT_PERMISSIONS'
-            ], 403);
-        }
-        
-        return $next($request);
-    }])->group(function () {
-        
+    Route::middleware(['permissions:admin'])->group(function () {
         // User Management API Routes
         Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{id}', [UserController::class, 'update']);

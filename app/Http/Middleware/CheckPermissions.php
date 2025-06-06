@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckPermissions
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
+     * @param  string|null  $permission
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     */
     public function handle(Request $request, Closure $next, $permission = null)
     {
         $user = Auth::user();
@@ -16,45 +24,53 @@ class CheckPermissions
             return redirect('login');
         }
 
-        // Determine which permission check to perform based on route name
-        $routeName = $request->route()->getName();
-        $middleware = $this->getMiddlewareFromRoute($request);
-        
-        switch ($middleware) {
+        // Handle different permission types
+        switch ($permission) {
             case 'admin':
                 if ($user->role !== 'admin') {
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => 'Access denied. Admin role required.',
+                            'error' => 'INSUFFICIENT_PERMISSIONS'
+                        ], 403);
+                    }
                     abort(403, 'Access denied. Admin role required.');
                 }
                 break;
                 
             case 'supervisor':
                 if (!in_array($user->role, ['admin', 'supervisor'])) {
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => 'Access denied. Supervisor role or higher required.',
+                            'error' => 'INSUFFICIENT_PERMISSIONS'
+                        ], 403);
+                    }
                     abort(403, 'Access denied. Supervisor role or higher required.');
                 }
                 break;
                 
             case 'write':
-                if ($user->permission_level === 'view only' || $user->permission_level === 'view_only') {
-                    abort(403, 'Access denied. Write permissions required.');
+                if ($user->permission_level === 'view') {
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => 'Access denied. You have view-only permissions.',
+                            'error' => 'INSUFFICIENT_PERMISSIONS'
+                        ], 403);
+                    }
+                    
+                    if ($request->isMethod('post') || $request->isMethod('put') || $request->isMethod('delete')) {
+                        return response()->json([
+                            'message' => 'Access denied. You have view-only permissions.',
+                            'error' => 'INSUFFICIENT_PERMISSIONS'
+                        ], 403);
+                    }
+                    
+                    return redirect()->back()->with('error', 'Access denied. You have view-only permissions.');
                 }
                 break;
         }
 
         return $next($request);
-    }
-    
-    private function getMiddlewareFromRoute($request)
-    {
-        $route = $request->route();
-        $middleware = $route->gatherMiddleware();
-        
-        // Find which of our custom middleware is being used
-        foreach ($middleware as $m) {
-            if (in_array($m, ['admin', 'supervisor', 'write'])) {
-                return $m;
-            }
-        }
-        
-        return null;
     }
 }

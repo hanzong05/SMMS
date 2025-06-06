@@ -70,8 +70,5 @@ class Kernel extends HttpKernel
         
         // Custom permission middleware
         'permissions' => \App\Http\Middleware\CheckPermissions::class,
-        'admin' => \App\Http\Middleware\CheckPermissions::class,
-        'supervisor' => \App\Http\Middleware\CheckPermissions::class,
-        'write' => \App\Http\Middleware\CheckPermissions::class,
     ];
 }
