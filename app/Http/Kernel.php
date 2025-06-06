@@ -68,7 +68,9 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         
-        // Custom permission middleware
-        'permissions' => \App\Http\Middleware\CheckPermissions::class,
+        // Custom permission middleware - using simpler approach
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'supervisor' => \App\Http\Middleware\SupervisorMiddleware::class,
+        'write_permission' => \App\Http\Middleware\WritePermissionMiddleware::class,
     ];
 }

@@ -94,7 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | Routes requiring WRITE permissions (blocked for view-only users)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'permissions:write'])->group(function () {
+Route::middleware(['auth', 'verified', 'write_permission'])->group(function () {
     // Waste management routes (write operations)
     Route::post('/wastes', [WasteController::class, 'store']);
     Route::put('/wastes/{id}', [WasteController::class, 'update']);
@@ -106,7 +106,7 @@ Route::middleware(['auth', 'verified', 'permissions:write'])->group(function () 
 | SUPERVISOR and ADMIN routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'permissions:supervisor'])->group(function () {
+Route::middleware(['auth', 'verified', 'supervisor'])->group(function () {
     // Advanced Analytics - supervisor and admin only
     Route::get('/AdvancedAnalytics', function () {
         return Inertia::render('Public/AdvancedAnalytics', [
@@ -120,7 +120,7 @@ Route::middleware(['auth', 'verified', 'permissions:supervisor'])->group(functio
 | ADMIN-ONLY routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'permissions:admin'])->group(function () {
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // Waste Configuration - admin only
     Route::get('/WasteConfig', function(){
         return Inertia::render('Admin/WasteConfigManager',[
@@ -199,7 +199,7 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     });
     
     // WRITE OPERATIONS - Blocked for view-only users
-    Route::middleware(['permissions:write'])->group(function () {
+    Route::middleware(['write_permission'])->group(function () {
         // Waste Type Management
         Route::post('/waste-types', [WasteConfigController::class, 'storeWasteType']);
         Route::put('/waste-types/{id}', [WasteConfigController::class, 'updateWasteType']);
@@ -212,7 +212,7 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
     });
     
     // ADMIN-ONLY API Routes
-    Route::middleware(['permissions:admin'])->group(function () {
+    Route::middleware(['admin'])->group(function () {
         // User Management API Routes
         Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{id}', [UserController::class, 'update']);

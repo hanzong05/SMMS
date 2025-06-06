@@ -3,124 +3,260 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
+use App\Models\WasteType;
+use App\Models\Disposition;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
-class UserController extends Controller
+class WasteConfigController extends Controller
 {
-    public function index()
+    /**
+     * Check if user has write permissions
+     */
+    private function hasWritePermission()
+    {
+        $user = Auth::user();
+        return $user && $user->permission_level === 'edit';
+    }
+
+    /**
+     * Check if user is admin
+     */
+    private function isAdmin()
+    {
+        $user = Auth::user();
+        return $user && $user->role === 'admin';
+    }
+
+    // Waste Types Methods
+    public function getWasteTypes(): JsonResponse
     {
         try {
-            $users = User::select(['id', 'name', 'email', 'role', 'department', 'status', 'permission_level', 'last_login_at', 'created_at'])
-                ->orderBy('created_at', 'desc')
-                ->get();
-            
+            $wasteTypes = WasteType::all();
             return response()->json([
                 'success' => true,
-                'data' => $users
+                'data' => $wasteTypes
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve users: ' . $e->getMessage()
+                'message' => 'Failed to fetch waste types',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    public function store(Request $request)
+    public function storeWasteType(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:admin,supervisor,user',
-            'department' => 'nullable|string|max:255',
-            'permission_level' => 'required|in:view,edit', // Add this validation
-        ]);
+        // Check permissions
+        if (!$this->hasWritePermission()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. You have view-only permissions.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
 
         try {
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'department' => $request->department,
-                'permission_level' => $request->permission_level, // Add this line
-                'status' => 'active',
+            $validated = $request->validate([
+                'WasteType' => 'required|string|max:255|unique:WasteTypes,WasteType',
+                'Svg' => 'required|string|max:10'
             ]);
+
+            $wasteType = WasteType::create($validated);
 
             return response()->json([
                 'success' => true,
-                'message' => 'User created successfully',
-                'data' => $user
+                'message' => 'Waste type created successfully',
+                'data' => $wasteType
             ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create user: ' . $e->getMessage()
+                'message' => 'Failed to create waste type',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    public function update(Request $request, $id)
+    public function updateWasteType(Request $request, $id): JsonResponse
     {
-        $user = User::findOrFail($id);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role' => 'required|in:admin,supervisor,user',
-            'department' => 'nullable|string|max:255',
-            'permission_level' => 'required|in:view,edit', // Add this validation
-        ]);
-
-        try {
-            $user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'role' => $request->role,
-                'department' => $request->department,
-                'permission_level' => $request->permission_level, // Add this line
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'User updated successfully',
-                'data' => $user
-            ]);
-        } catch (\Exception $e) {
+        // Check permissions
+        if (!$this->hasWritePermission()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update user: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Access denied. You have view-only permissions.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
         }
-    }
 
-    public function destroy($id)
-    {
         try {
-            $user = User::findOrFail($id);
+            $wasteType = WasteType::findOrFail($id);
             
-            // Prevent deleting yourself
-            if ($user->id === auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You cannot delete your own account'
-                ], 400);
-            }
+            $validated = $request->validate([
+                'WasteType' => 'required|string|max:255|unique:WasteTypes,WasteType,' . $id,
+                'Svg' => 'required|string|max:10'
+            ]);
 
-            $user->delete();
+            $wasteType->update($validated);
 
             return response()->json([
                 'success' => true,
-                'message' => 'User deleted successfully'
+                'message' => 'Waste type updated successfully',
+                'data' => $wasteType
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waste type not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete waste type',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Dispositions Methods
+    public function getDispositions(): JsonResponse
+    {
+        try {
+            $dispositions = Disposition::all();
+            return response()->json([
+                'success' => true,
+                'data' => $dispositions
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete user: ' . $e->getMessage()
+                'message' => 'Failed to fetch dispositions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function storeDisposition(Request $request): JsonResponse
+    {
+        // Check permissions
+        if (!$this->hasWritePermission()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. You have view-only permissions.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
+
+        try {
+            $validated = $request->validate([
+                'Dispostion' => 'required|string|max:255|unique:Dispostion,Dispostion',
+                'Svg' => 'required|string|max:10'
+            ]);
+
+            $disposition = Disposition::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposition created successfully',
+                'data' => $disposition
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create disposition',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateDisposition(Request $request, $id): JsonResponse
+    {
+        // Check permissions
+        if (!$this->hasWritePermission()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. You have view-only permissions.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
+
+        try {
+            $disposition = Disposition::findOrFail($id);
+            
+            $validated = $request->validate([
+                'Dispostion' => 'required|string|max:255|unique:Dispostion,Dispostion,' . $id,
+                'Svg' => 'required|string|max:10'
+            ]);
+
+            $disposition->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposition updated successfully',
+                'data' => $disposition
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposition not found'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update disposition',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteDisposition($id): JsonResponse
+    {
+        // Check permissions - only admin can delete
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Admin role required.',
+                'error' => 'INSUFFICIENT_PERMISSIONS'
+            ], 403);
+        }
+
+        try {
+            $disposition = Disposition::findOrFail($id);
+            $disposition->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disposition deleted successfully'
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Disposition not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete disposition',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
